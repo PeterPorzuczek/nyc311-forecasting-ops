@@ -34,7 +34,8 @@ if ($listener.Count) {
         throw 'Port 30130 is owned by an unmanaged service; no process was stopped'
     }
     $null=Assert-Owned $state.listener
-    $same=$state.commit -eq $commit -and $state.database -eq $env:MONGO_DB_NAME
+    $same=$state.commit -eq $commit -and $state.database -eq $env:MONGO_DB_NAME -and
+        ($state.PSObject.Properties.Name -contains 'launcher_version') -and $state.launcher_version -eq 2
     if (!$same) {
         foreach ($record in @($state.listener,$state.launcher)) {
             $owned=Assert-Owned $record
@@ -46,14 +47,16 @@ if ($listener.Count) {
 }
 if (!$same) {
     $env:JENKINS_NODE_COOKIE='nyc311-frontend-service'
-    $arguments=@(('"'+$scriptPath+'"'),'--config',('"'+(Join-Path $release $env:CONFIG_PATH)+'"'),'--port',"$port")
-    $launcher=Start-Process -FilePath $RuntimePython -ArgumentList $arguments -WorkingDirectory $release -WindowStyle Hidden `
-        -RedirectStandardOutput (Join-Path $frontHome 'stdout.log') -RedirectStandardError (Join-Path $frontHome 'stderr.log') -PassThru
+    # close_fds + an explicit stdio handle list avoid keeping Jenkins' pipes open.
+    # DETACHED_PROCESS creates no console window and does not wait for the service.
+    $launcherId=[int](& $RuntimePython "$PSScriptRoot\detach_frontend.py" --python $RuntimePython --script $scriptPath `
+        --config (Join-Path $release $env:CONFIG_PATH) --cwd $release --log-dir $frontHome --port $port)
+    if ($LASTEXITCODE -ne 0) { throw 'Detached frontend launch failed' }
     for ($i=0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 1
         $listener=Get-Listener
         if ($listener.Count) { break }
-        if ($launcher.HasExited) { throw 'Frontend exited; inspect persistent stderr.log' }
+        if (!(Get-Process -Id $launcherId -ErrorAction SilentlyContinue)) { throw 'Frontend exited; inspect persistent stderr.log' }
     }
     if ($listener.Count -ne 1 -or $listener[0].LocalAddress -ne '127.0.0.1') { throw 'Expected one loopback frontend listener' }
     function Record-Process([int]$processId) {
@@ -61,7 +64,7 @@ if (!$same) {
         if (!$process -or !$process.CommandLine.Contains($scriptPath)) { throw 'Unexpected frontend process identity' }
         return @{pid=$processId;created_at=$process.CreationDate.ToUniversalTime().ToString('o');executable=$process.ExecutablePath;script=$scriptPath}
     }
-    $state=@{commit=$commit;database=$env:MONGO_DB_NAME;listener=(Record-Process $listener[0].OwningProcess);launcher=(Record-Process $launcher.Id)}
+    $state=@{commit=$commit;database=$env:MONGO_DB_NAME;launcher_version=2;listener=(Record-Process $listener[0].OwningProcess);launcher=(Record-Process $launcherId)}
     $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding UTF8
 }
 $health=Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/health" -TimeoutSec 10

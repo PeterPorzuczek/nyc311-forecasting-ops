@@ -42,7 +42,9 @@ The model pipeline holds no executor while waiting for another job, so one execu
 Its frontend checkout is pinned to the commit that produced the prediction.
 Deployment stops only a process whose PID, creation time, executable and script match its saved ownership record.
 An unrelated listener causes a failure. Same-commit deployments keep the healthy process running.
-`JENKINS_NODE_COOKIE` preserves the hidden service after the build; health and prediction/diagnostic coverage are checked.
+`JENKINS_NODE_COOKIE` preserves the hidden service after the build. The Python launcher uses a detached process
+and explicitly closes inherited handles, so Jenkins is not left waiting for its output pipes.
+Health and prediction/diagnostic coverage are checked.
 This starts the service after a successful model job; Windows reboot recovery requires Jenkins to be started again.
 
 ## Parameters
@@ -60,6 +62,7 @@ Changing application configuration requires compatible model artifacts or retrai
 - `pipelines/*.Jenkinsfile`: the three execution pipelines.
 - `scripts/runtime.ps1`: dependency setup and application command adapter.
 - `scripts/frontend.ps1`: owned-process deployment and HTTP verification.
+- `scripts/detach_frontend.py`: hidden launch with isolated standard streams and handle inheritance.
 - `scripts/configure_jenkins.py`: repeatable API setup of the seed job.
 
 This repository starts with fresh Git history. Prior local Git metadata was retired outside active history
