@@ -65,7 +65,7 @@ if (!$same) {
         return @{pid=$processId;created_at=$process.CreationDate.ToUniversalTime().ToString('o');executable=$process.ExecutablePath;script=$scriptPath}
     }
     $state=@{commit=$commit;database=$env:MONGO_DB_NAME;launcher_version=2;listener=(Record-Process $listener[0].OwningProcess);launcher=(Record-Process $launcherId)}
-    $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding UTF8
+    [IO.File]::WriteAllText($statePath,($state | ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
 }
 $health=Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/health" -TimeoutSec 10
 if ($health.StatusCode -ne 200) { throw 'Frontend healthcheck failed' }
@@ -76,5 +76,5 @@ $result=@($results)[0]
 if (!$result.forecasts.Count -or $result.forecasts.Count -ne $result.diagnostics.Count) { throw 'Forecast/diagnostic coverage mismatch' }
 $report=@{status='healthy';url="http://127.0.0.1:$port";commit=$commit;run_id=$result.run_id;forecasts=$result.forecasts.Count;diagnostics=$result.diagnostics.Count;already_running=$same;listener_pid=$state.listener.pid}
 New-Item -ItemType Directory -Force -Path 'artifacts' | Out-Null
-$report | ConvertTo-Json | Set-Content -LiteralPath 'artifacts/frontend.json' -Encoding UTF8
+[IO.File]::WriteAllText((Join-Path (Get-Location).Path 'artifacts/frontend.json'),($report | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
 $report | ConvertTo-Json | Write-Output
