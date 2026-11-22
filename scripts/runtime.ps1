@@ -1,6 +1,12 @@
 param([ValidateSet('prepare','fetch','model')][string]$Action='prepare', [Parameter(Mandatory)][string]$AppPath)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
+# Jenkins may inherit PSModulePath from a PowerShell 7 launcher. Windows
+# PowerShell 5.1 must discover its own Utility, CimCmdlets and NetTCPIP modules.
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    $env:PSModulePath="$PSHOME\Modules;$env:ProgramFiles\WindowsPowerShell\Modules;$env:USERPROFILE\Documents\WindowsPowerShell\Modules"
+    Import-Module Microsoft.PowerShell.Utility -Force
+}
 $AppPath=(Resolve-Path -LiteralPath $AppPath).Path
 $RuntimeHome=if ($env:NYC311_HOME) { [IO.Path]::GetFullPath($env:NYC311_HOME) } else { Join-Path $env:LOCALAPPDATA 'nyc311' }
 $env:MONGO_URI='mongodb://127.0.0.1:27017'
