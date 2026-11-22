@@ -1,0 +1,5 @@
+.git-retired/
+artifacts/
+.env
+__pycache__/
+*.log
