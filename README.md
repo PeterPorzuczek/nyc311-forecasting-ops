@@ -11,7 +11,8 @@ This repository owns Jenkins, schedules and Windows frontend deployment.
 | `nyc311-front` | Successful model job or manual | Deploys exact application commit, verifies health and visibility of the requested prediction |
 
 The root `Jenkinsfile` is the one-time/repeatable **seed job**, not a fourth business pipeline.
-It generates the three jobs with sandboxed Job DSL. Subsequent seed runs do not delete unrelated jobs.
+It generates the three jobs with an administrator-approved Job DSL script (approval is tied to its content).
+Pipeline CPS remains sandboxed. Subsequent seed runs do not delete unrelated jobs.
 Both cron expressions explicitly use New York time (normally 16:00/16:30 in Warsaw; DST transition weeks differ).
 
 ## Local setup

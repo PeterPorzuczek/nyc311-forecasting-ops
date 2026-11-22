@@ -11,7 +11,10 @@
    `python scripts/configure_jenkins.py --url http://127.0.0.1:8080 --build`.
    An API token is preferred. Password authentication also works with the session crumb used by this helper.
    Never put a secret in source code, a build parameter or a Git remote URL.
-6. Run seed, then `nyc311-model`. The chain is fetch → model → front. Check archived JSON and console status.
+6. Run seed. Review and approve exactly `jobs/nyc311.groovy` in Manage Jenkins → In-process Script Approval,
+   then rerun seed. Job DSL requires this per-content approval on controllers without a build-user authorization plugin.
+   Do not disable global script security or approve unrelated pending scripts.
+   Run `nyc311-model`. The chain is fetch → model → front. Check archived JSON and console status.
 7. Open [local results](http://127.0.0.1:30130/) and the diagnostics section.
 
 An existing manually launched viewer must be stopped once after verifying its executable, script and port.
@@ -21,7 +24,8 @@ No initial backfill is performed automatically. For a new empty database, run th
 For the already imported database, the first fetch must report `already_current`, `api_requests: 0`, `fetched: 0`.
 Missing, changed or previous-day snapshots deliberately do not qualify for that shortcut.
 
-The jobs are additive and preserve all other Jenkins projects. Security, CSRF protection and the Groovy sandbox remain enabled.
+The jobs are additive and preserve all other Jenkins projects. Security, CSRF protection and Pipeline Groovy sandboxes remain enabled.
+Only the reviewed Job DSL source receives content-specific administrator approval.
 
 Primary references: [Jenkins Pipeline syntax](https://www.jenkins.io/doc/book/pipeline/syntax/),
 [remote API](https://www.jenkins.io/doc/book/using/remote-access-api/),

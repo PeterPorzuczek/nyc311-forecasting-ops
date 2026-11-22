@@ -22,7 +22,9 @@ pipeline {
                     removedJobAction: 'IGNORE',
                     removedViewAction: 'IGNORE',
                     lookupStrategy: 'JENKINS_ROOT',
-                    sandbox: true,
+                    // Exact Job DSL source is approved by an administrator.
+                    // Pipeline CPS remains sandboxed; no global sandbox change.
+                    sandbox: false,
                 )
             }
         }
