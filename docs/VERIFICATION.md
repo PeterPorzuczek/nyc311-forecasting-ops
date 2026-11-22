@@ -1,4 +1,40 @@
-# Local Jenkins verification — 22 November 2026
+# Jenkins and portability verification
+
+## Update — 23 November 2026, Europe/Warsaw
+
+The active operations code uses Python, with `sh`/`bat` dispatch in Jenkins.
+There are no PowerShell scripts or source comments in either repository.
+The node label is `nyc311`. Setup, fetch, model and frontend definitions passed
+the controller's Declarative Pipeline validator.
+
+| Job | Build | Result |
+|---|---:|---|
+| nyc311-seed | 4 | SUCCESS |
+| nyc311-fetch | 5 | SUCCESS |
+| nyc311-model | 6 | SUCCESS |
+| nyc311-front | 5, 6, 7 | SUCCESS |
+
+Model #6 completed the entire fetch → model → front chain. Front #6 deployed
+application `f0f6e4ecc3b67dfc9fdea7d67d860b9cdaed1eaf`; #7 repeated deployment,
+returned `already_running=true` and preserved listener PID 16560.
+Health and the expected run remained available after build completion.
+Fetch made **0 API requests** and fetched **0 records**. Source collections retained
+2,021,898 documents each. All 72 forecast documents matched their pre-run checksum.
+The frontend exposes 36 forecasts and 36 diagnostics for the production run.
+
+Application tests with native MongoDB passed **72 tests**, without skips.
+Operations tests passed **6 tests locally**, then the same **6 tests on Ubuntu and
+6 on Windows** in [GitHub Actions](https://github.com/PeterPorzuczek/nyc311-forecasting-ops/actions/runs/45081510495).
+Ruff passed in each environment. Tests exercise interprocess locks, committed-file
+exports, process ownership, detached lifetime, repeat deployment and refusal to
+stop an unmanaged listener. macOS was not executed; the full application MongoDB
+integration suite was executed on the local Windows host.
+
+The source audit found zero Python comments/docstrings across 55 application files
+and 4 ops files, zero Groovy comments and zero `.ps1` files.
+Exact records: [portable_verification_20261123.json](results/portable_verification_20261123.json).
+
+## Original local verification — 22 November 2026
 
 Verified against the running Windows controller at `http://127.0.0.1:8080` and native
 MongoDB at `127.0.0.1:27017`, database `nyc311_forecasting`. Full machine-readable
