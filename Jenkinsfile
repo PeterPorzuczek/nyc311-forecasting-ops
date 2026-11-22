@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'nyc311-windows' }
+    agent { label 'nyc311' }
 
     options {
         timestamps()
@@ -22,8 +22,6 @@ pipeline {
                     removedJobAction: 'IGNORE',
                     removedViewAction: 'IGNORE',
                     lookupStrategy: 'JENKINS_ROOT',
-                    // Exact Job DSL source is approved by an administrator.
-                    // Pipeline CPS remains sandboxed; no global sandbox change.
                     sandbox: false,
                 )
             }

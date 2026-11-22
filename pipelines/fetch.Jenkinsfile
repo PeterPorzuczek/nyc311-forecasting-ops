@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'nyc311-windows' }
+    agent { label 'nyc311' }
     options { timestamps(); disableConcurrentBuilds(); skipDefaultCheckout(true); timeout(time: 120, unit: 'MINUTES') }
     stages {
         stage('Checkout') {
@@ -9,7 +9,7 @@ pipeline {
             }
         }
         stage('Fetch only when due') {
-            steps { powershell '& ./scripts/runtime.ps1 -Action fetch -AppPath "$env:WORKSPACE/app"' }
+            steps { script { load('scripts/steps.groovy').runPython('-m scripts.runtime fetch --app-path app') } }
         }
     }
     post { always { archiveArtifacts artifacts: 'app/artifacts/refresh-fetch.json', allowEmptyArchive: true } }

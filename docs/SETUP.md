@@ -1,33 +1,38 @@
-# Windows / localhost setup
+# Local setup
 
-1. Start native MongoDB on `127.0.0.1:27017`. Preserve the existing `nyc311_forecasting` database.
-2. Run Jenkins under the same Windows account that owns `%LOCALAPPDATA%\nyc311`, or configure `NYC311_HOME`
-   and grant that account access to the existing models/runs. Install Python 3.12 and Git.
-3. Install Jenkins plugins Pipeline, Git, Job DSL and Timestamper. Restart when dependencies require it.
-4. Assign label `nyc311-windows` to the local node. This local setup intentionally uses the controller's existing executors.
-5. Create a Pipeline from SCM seed named `nyc311-seed`:
+1. Run MongoDB on `127.0.0.1:27017` and preserve `nyc311_forecasting`.
+2. Install Python 3.12 and Git. Run Jenkins under an account with access to the existing
+   models and reports. Set `NYC311_HOME` when using a nondefault location.
+3. Install Jenkins Pipeline, Git, Job DSL and Timestamper with compatible dependencies.
+4. Assign label `nyc311` to one local node. All jobs need the same local MongoDB and artifact directory.
+   Linux, macOS and Windows nodes use the same pipeline definitions.
+5. Create a Pipeline from SCM seed named `nyc311-seed`, repository
    `https://github.com/PeterPorzuczek/nyc311-forecasting-ops.git`, branch `*/main`, script `Jenkinsfile`.
-   Alternatively set `JENKINS_USER` and `JENKINS_TOKEN` in the process environment and run
-   `python scripts/configure_jenkins.py --url http://127.0.0.1:8080 --build`.
-   An API token is preferred. Password authentication also works with the session crumb used by this helper.
-   Never put a secret in source code, a build parameter or a Git remote URL.
-6. Run seed. Review and approve exactly `jobs/nyc311.groovy` in Manage Jenkins → In-process Script Approval,
-   then rerun seed. Job DSL requires this per-content approval on controllers without a build-user authorization plugin.
-   Do not disable global script security or approve unrelated pending scripts.
-   Run `nyc311-model`. The chain is fetch → model → front. Check archived JSON and console status.
-7. Open [local results](http://127.0.0.1:30130/) and the diagnostics section.
+   Alternatively supply `JENKINS_USER` and `JENKINS_TOKEN` in the environment and run:
 
-An existing manually launched viewer must be stopped once after verifying its executable, script and port.
-The deployment refuses to kill unmanaged processes. Later deployments manage only their recorded process identity.
+```sh
+python3.12 scripts/configure_jenkins.py --url http://127.0.0.1:8080 --build
+```
 
-No initial backfill is performed automatically. For a new empty database, run the documented application backfill first.
-For the already imported database, the first fetch must report `already_current`, `api_requests: 0`, `fetched: 0`.
-Missing, changed or previous-day snapshots deliberately do not qualify for that shortcut.
+6. Run the seed and approve exactly the reviewed `jobs/nyc311.groovy` source in Jenkins Script Approval.
+   Rerun the seed after approval. A changed DSL source requires its own approval.
+   Pipeline sandboxing, CSRF protection and unrelated jobs remain unchanged.
+7. Run `nyc311-model`. It invokes fetch, publishes predictions and diagnostics, and deploys the frontend.
+   Inspect archived JSON and open [local results](http://127.0.0.1:30130/).
 
-The jobs are additive and preserve all other Jenkins projects. Security, CSRF protection and Pipeline Groovy sandboxes remain enabled.
-Only the reviewed Job DSL source receives content-specific administrator approval.
+An API token is preferred for the setup helper. Password authentication uses a session crumb.
+Never save credentials in source, job parameters or remote URLs.
+On POSIX the default interpreter is `python3.12`; set `PYTHON_BIN` to an absolute executable path if needed.
+On Windows the fallback is `py -3.12`; no PowerShell installation or scripts are used.
 
-Primary references: [Jenkins Pipeline syntax](https://www.jenkins.io/doc/book/pipeline/syntax/),
+For an empty database, perform the application's documented backfill before scheduled refresh.
+A current, unchanged, complete snapshot returns `already_current`, `api_requests: 0`, `fetched: 0`.
+A stale or revised snapshot must be refreshed.
+
+Deployment recognizes the previous process record format and verifies ownership before replacement.
+An unmanaged service on port 30130 is never stopped automatically.
+The persistent home must be shared by successive builds and kept outside workspaces.
+
+References: [Pipeline syntax](https://www.jenkins.io/doc/book/pipeline/syntax/),
 [remote API](https://www.jenkins.io/doc/book/using/remote-access-api/),
-[CSRF protection](https://www.jenkins.io/doc/book/security/csrf-protection/),
 [Job DSL](https://plugins.jenkins.io/job-dsl/).

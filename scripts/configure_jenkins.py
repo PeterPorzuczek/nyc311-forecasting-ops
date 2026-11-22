@@ -1,4 +1,3 @@
-"""Create/update the SCM seed job. Credentials are supplied only via environment."""
 import argparse
 import base64
 from http.cookiejar import CookieJar
@@ -11,11 +10,11 @@ from xml.sax.saxutils import escape
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(description='Configure the NYC311 Jenkins seed job')
     p.add_argument('--url', default='http://127.0.0.1:8080')
     p.add_argument('--build', action='store_true')
     args = p.parse_args()
-    secret = os.environ['JENKINS_TOKEN']  # API token preferred; password + crumb also supported.
+    secret = os.environ['JENKINS_TOKEN']
     user = os.environ.get('JENKINS_USER', 'admin')
     auth = base64.b64encode(f'{user}:{secret}'.encode()).decode()
     headers = {'Authorization': 'Basic ' + auth}

@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'nyc311-windows' }
+    agent { label 'nyc311' }
     options { timestamps(); disableConcurrentBuilds(); skipDefaultCheckout(true); timeout(time: 20, unit: 'MINUTES') }
     stages {
         stage('Checkout') {
@@ -9,7 +9,7 @@ pipeline {
             }
         }
         stage('Deploy and verify frontend') {
-            steps { powershell '& ./scripts/frontend.ps1 -AppPath "$env:WORKSPACE/app"' }
+            steps { script { load('scripts/steps.groovy').runPython('-m scripts.runtime front --app-path app') } }
         }
     }
     post { always { archiveArtifacts artifacts: 'artifacts/frontend.json', allowEmptyArchive: true } }

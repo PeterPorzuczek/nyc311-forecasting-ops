@@ -1,4 +1,3 @@
-// Exactly three application jobs. The root Jenkinsfile is the setup/seed job.
 ['fetch', 'model', 'front'].each { kind ->
     pipelineJob("nyc311-${kind}") {
         description("NYC311 ${kind}; managed by nyc311-seed. Configuration lives in the public ops repository.")
@@ -8,8 +7,8 @@
             stringParam('APP_BRANCH', 'main', 'Application branch or commit')
             stringParam('CONFIG_PATH', 'config/production.json', 'Application configuration')
             stringParam('MONGO_DB_NAME', 'nyc311_forecasting', 'Existing local Mongo database')
-            stringParam('NYC311_HOME', '', 'Empty: LocalAppData/nyc311; shared persistent models, runs and runtime')
-            stringParam('PYTHON_BIN', '', 'Empty: local Python 3.12 installation or py launcher')
+            stringParam('NYC311_HOME', '', 'Persistent models, runs and runtime; empty uses the account data directory')
+            stringParam('PYTHON_BIN', '', 'Python 3.12 executable; empty uses python3.12 or the py launcher')
             if (kind == 'model') {
                 choiceParam('TRAINING_POLICY', ['auto', 'reuse', 'train'], 'Reuse compatible artifact until its weekly refit is due')
                 stringParam('RUN_ID', '', 'Empty: deterministic NYC business-day run ID')

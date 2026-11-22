@@ -3,3 +3,6 @@ artifacts/
 .env
 __pycache__/
 *.log
+.venv/
+.pytest_cache/
+.ruff_cache/
