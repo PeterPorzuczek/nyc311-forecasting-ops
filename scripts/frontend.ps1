@@ -46,7 +46,7 @@ if ($listener.Count) {
 }
 if (!$same) {
     $env:JENKINS_NODE_COOKIE='nyc311-frontend-service'
-    $arguments=@('"'+$scriptPath+'"','--config','"'+(Join-Path $release $env:CONFIG_PATH)+'"','--port',"$port")
+    $arguments=@(('"'+$scriptPath+'"'),'--config',('"'+(Join-Path $release $env:CONFIG_PATH)+'"'),'--port',"$port")
     $launcher=Start-Process -FilePath $RuntimePython -ArgumentList $arguments -WorkingDirectory $release -WindowStyle Hidden `
         -RedirectStandardOutput (Join-Path $frontHome 'stdout.log') -RedirectStandardError (Join-Path $frontHome 'stderr.log') -PassThru
     for ($i=0; $i -lt 30; $i++) {
