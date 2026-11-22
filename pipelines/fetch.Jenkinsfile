@@ -9,7 +9,7 @@ pipeline {
             }
         }
         stage('Fetch only when due') {
-            steps { powershell '& .\scripts\runtime.ps1 -Action fetch -AppPath "$env:WORKSPACE\app"' }
+            steps { powershell '& ./scripts/runtime.ps1 -Action fetch -AppPath "$env:WORKSPACE/app"' }
         }
     }
     post { always { archiveArtifacts artifacts: 'app/artifacts/refresh-fetch.json', allowEmptyArchive: true } }

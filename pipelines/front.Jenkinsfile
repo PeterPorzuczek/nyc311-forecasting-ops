@@ -9,7 +9,7 @@ pipeline {
             }
         }
         stage('Deploy and verify frontend') {
-            steps { powershell '& .\scripts\frontend.ps1 -AppPath "$env:WORKSPACE\app"' }
+            steps { powershell '& ./scripts/frontend.ps1 -AppPath "$env:WORKSPACE/app"' }
         }
     }
     post { always { archiveArtifacts artifacts: 'artifacts/frontend.json', allowEmptyArchive: true } }
