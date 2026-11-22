@@ -52,6 +52,8 @@ This starts the service after a successful model job; Windows reboot recovery re
 Common: `APP_REPO_URL`, `APP_BRANCH`, `CONFIG_PATH`, `MONGO_DB_NAME`, `NYC311_HOME`, `PYTHON_BIN`.
 Empty `PYTHON_BIN` detects the local Python 3.12 install or `py -3.12`.
 Model: `TRAINING_POLICY` (`auto` default), optional `RUN_ID` (default NYC business-day ID, safe retries).
+To force a different policy or a second calculation on the same day, supply a new `RUN_ID`;
+changing parameters of an existing immutable run is rejected.
 Front: optional `EXPECTED_RUN_ID` (automatically supplied by model).
 Changing application configuration requires compatible model artifacts or retraining; it does not rewrite prior runs.
 
@@ -67,3 +69,9 @@ Changing application configuration requires compatible model artifacts or retrai
 
 This repository starts with fresh Git history. Prior local Git metadata was retired outside active history
 and is ignored; it is not part of any public commit. No upstream private repository is modified.
+
+## Verified execution
+
+See [the actual local Jenkins verification](docs/VERIFICATION.md): successful complete chains,
+zero-request fetch, preserved source data, 36 integer forecasts and diagnostics, and a frontend
+that survives build completion. The JSON evidence includes schedules, build numbers and plugin versions.

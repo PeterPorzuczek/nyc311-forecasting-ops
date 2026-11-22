@@ -1,0 +1,102 @@
+{
+  "verified_at": "2026-11-22T22:39:36.547761+00:00",
+  "database": "nyc311_forecasting",
+  "jenkins": "http://127.0.0.1:8080",
+  "jobs": {
+    "nyc311-seed": {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+      "building": false,
+      "duration": 7556,
+      "number": 3,
+      "result": "SUCCESS",
+      "url": "http://127.0.0.1:8080/job/nyc311-seed/3/",
+      "schedule": []
+    },
+    "nyc311-fetch": {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+      "building": false,
+      "duration": 12828,
+      "number": 4,
+      "result": "SUCCESS",
+      "url": "http://127.0.0.1:8080/job/nyc311-fetch/4/",
+      "schedule": [
+        "TZ=America/New_York\n0 10 * * *"
+      ]
+    },
+    "nyc311-model": {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+      "building": false,
+      "duration": 59293,
+      "number": 5,
+      "result": "SUCCESS",
+      "url": "http://127.0.0.1:8080/job/nyc311-model/5/",
+      "schedule": [
+        "TZ=America/New_York\n30 10 * * *"
+      ]
+    },
+    "nyc311-front": {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+      "building": false,
+      "duration": 14614,
+      "number": 4,
+      "result": "SUCCESS",
+      "url": "http://127.0.0.1:8080/job/nyc311-front/4/",
+      "schedule": []
+    }
+  },
+  "fetch": {
+    "status": "completed",
+    "action": "already_current",
+    "api_requests": 0,
+    "fetched": 0,
+    "snapshot_id": "nyc311-catboost-6m-20261122-cf505aa52d5047438998bcd97207c0b1",
+    "source_run_id": "nyc311-catboost-6m-20261122",
+    "data_through_date": "2026-11-20"
+  },
+  "frontend": {
+    "diagnostics": 36,
+    "listener_pid": 29324,
+    "run_id": "nyc311-model-20261122",
+    "already_running": true,
+    "url": "http://127.0.0.1:30130",
+    "status": "healthy",
+    "forecasts": 36,
+    "commit": "4ebafa263c6e24af411cf83f7132c94703893ae7"
+  },
+  "source_counts": {
+    "raw_current": 2021898,
+    "raw_history": 2021898,
+    "snapshot_rows": 2021898
+  },
+  "repeat": {
+    "forecast_documents_unchanged": true,
+    "frontend_pid_unchanged": true,
+    "forecast_sha256": "7265499c4213d5c192b1fe74d8d7b8f9c245378aa1b44508791fb6a7e175fc7c"
+  },
+  "prediction": {
+    "run_id": "nyc311-model-20261122",
+    "target_date": "2026-11-23",
+    "forecast_rows": 36,
+    "forecast_total": 12654,
+    "selected_model": "weekday_mean4",
+    "data_through_date": "2026-11-20",
+    "dataset_id": "c1b594bd9b80edc6da02fb9e6ec8caba26423634e1af0f30aa4a8b6be5176b31",
+    "model_id": "96a854ca8ed590618a3ef7869aebeb6a2ccf91e3f4a0bf9c0718a138afc069ae",
+    "diagnostics": 36
+  },
+  "candidate_mae": {
+    "seasonal_naive": 48.10383597883598,
+    "weekday_mean4": 38.716931216931215,
+    "catboost_mae": 38.89087301587302
+  },
+  "plugins": {
+    "git": "5.11.0",
+    "job-dsl": "3752.vb_199526b_20c3",
+    "pipeline-build-step": "605.v00486e8f4b_3e",
+    "pipeline-model-definition": "2.2293.v6e7193cec599",
+    "timestamper": "1.30",
+    "workflow-cps": "4403.v471713a_cea_19",
+    "workflow-job": "1624.ve973eb_34e031",
+    "workflow-support": "1035.v6a_23b_e298a_5d"
+  }
+}

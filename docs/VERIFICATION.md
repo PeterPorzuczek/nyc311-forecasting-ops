@@ -1,0 +1,73 @@
+# Local Jenkins verification — 22 November 2026
+
+Verified against the running Windows controller at `http://127.0.0.1:8080` and native
+MongoDB at `127.0.0.1:27017`, database `nyc311_forecasting`. Full machine-readable
+evidence: [local_verification_20261122.json](results/local_verification_20261122.json).
+
+## Actual builds
+
+| Job | Verified build | Result | Trigger |
+|---|---:|---|---|
+| nyc311-seed | 3 | SUCCESS | Setup from public ops SCM |
+| nyc311-fetch | 4 | SUCCESS | Model dependency; daily cron also configured |
+| nyc311-model | 5 | SUCCESS | Manual end-to-end verification; daily cron also configured |
+| nyc311-front | 3 and 4 | SUCCESS | Model #5 triggered #3; #4 verified final JSON encoding |
+
+Two consecutive complete chains succeeded: model #4 → front #2 and model #5 → front #3.
+The final frontend-only check #4 also succeeded. Earlier failures remain in Jenkins
+history and were fixed, rather than relabeled as successful builds.
+
+Schedules read back from the actual job configuration:
+
+- Fetch: `TZ=America/New_York`, `0 10 * * *`.
+- Model: `TZ=America/New_York`, `30 10 * * *`.
+- Front: no independent cron; waits for successful model publication.
+
+All three pipeline files also passed the controller's Declarative Pipeline validator.
+SCM URLs point to the two new **public** `PeterPorzuczek/nyc311-forecasting*` repositories.
+The deployed application revision is `4ebafa263c6e24af411cf83f7132c94703893ae7`.
+Jenkins orchestration and deployment scripts exist only in this ops repository.
+
+## Data and model checks
+
+- First successful fetch (#2), and all later fetches, returned `already_current`,
+  **api_requests=0**, **fetched=0**. Initial setup failures occurred before source access.
+- `raw_current`, `raw_history`, `snapshot_rows` each contain **2,021,898** documents,
+  unchanged from before the Jenkins run. No application data was deleted.
+- Snapshot is unchanged, through **2026-11-20**, with **184 mature days** and **36 groups**.
+- `nyc311-model-20261122`: **36 integer predictions**, **36 diagnostic documents**,
+  target **2026-11-23**, total **12,654**, selected model **weekday_mean4**.
+- The production comparison reproduced the frozen development scores exactly:
+  seasonal naive **48.103836**, weekday mean4 **38.716931**, tuned CatBoost MAE **38.890873**.
+- Repeating the complete chain left all prediction documents byte-equivalent under
+  canonical BSON JSON serialization (including their issue timestamps and write metadata).
+  SHA-256: `7265499c4213d5c192b1fe74d8d7b8f9c245378aa1b44508791fb6a7e175fc7c`.
+- Forecast evaluations correctly wait for mature future labels.
+
+## Frontend checks
+
+`http://127.0.0.1:30130/health` returned HTTP 200 after the jobs had finished.
+The results API returned the requested completed run, 36 integer forecasts and 36 diagnostics.
+Browser verification confirmed the total, run filter and expanded history diagnostics.
+The service remained alive after build completion. Repeated deployment reported
+`already_running=true` and preserved the listener PID; unrelated processes were not stopped.
+
+## Fixes found by execution
+
+1. Installed Job DSL and updated incompatible older Pipeline dependencies. The old
+   workflow-job plugin failed during build finalization with missing `TarArchiveInputStream`.
+   Plugin versions actually used are recorded in the JSON evidence. Existing unrelated jobs were retained.
+2. Approved exactly the reviewed Job DSL source by its content; global script security and CSRF stay enabled.
+3. Corrected Groovy/PowerShell path escaping and restored Windows PowerShell module discovery
+   when the controller inherited a PowerShell 7 module path.
+4. Replaced a launcher that leaked inherited Jenkins pipe handles with a hidden detached
+   Python process, explicit standard streams and `close_fds=True`.
+5. Published frontend JSON as UTF-8 without BOM, so ordinary HTTP JSON consumers can read it.
+6. Application tests uncovered transient Windows access errors during atomic JSON replacement.
+   Bounded retries preserve atomicity and still fail on persistent permission errors.
+
+The application's final native-Mongo test suite passed **72 tests**, with no skips;
+Ruff passed. This verification exercised a real current-data no-op and real model/deployment
+execution. It did not advance the system clock or download tomorrow's data to simulate a cron event.
+Next-day invalidation, incomplete coverage and revised-data rejection are covered by application tests.
+Schedules require the machine, MongoDB and Jenkins to remain running.
