@@ -58,6 +58,8 @@ def owned_process(record):
         expected_time = record['created_at']
         if isinstance(expected_time, str):
             expected_time = datetime.fromisoformat(expected_time.replace('Z', '+00:00')).timestamp()
+        if abs(process.create_time() - expected_time) > 0.0001:
+            return None
         current = process_record(process, record['script'])
         if abs(current['created_at'] - expected_time) > 0.0001 or Path(current['executable']) != Path(record['executable']):
             raise RuntimeError('Process ownership changed; refusing to stop an unrelated process')

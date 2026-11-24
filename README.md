@@ -39,6 +39,9 @@ and the account's `LocalAppData/nyc311` on Windows to preserve existing installa
 `scripts/frontend.py` verifies PID, creation time, executable and script before stopping a process.
 An unmanaged listener fails deployment. Repeated deployments with the same commit, configuration,
 runtime and healthy process preserve its PID. A deployment lock serializes shared-host updates.
+If a saved PID has been reused, its different creation time marks the record as stale;
+deployment leaves that process untouched and can start the frontend when the port is free.
+An occupied unmanaged port or a changed identity within the same process still blocks deployment.
 The frontend starts in a separate session on POSIX and as a detached process on Windows.
 Explicit standard streams and closed inherited handles let Jenkins finish while the frontend remains running.
 Health, expected run, integer forecasts and matching diagnostic groups are checked before success.
