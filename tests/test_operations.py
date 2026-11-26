@@ -30,6 +30,7 @@ def app(tmp_path):
         p = argparse.ArgumentParser()
         p.add_argument('--config')
         p.add_argument('--port', type=int)
+        p.add_argument('--host', default='127.0.0.1')
         args = p.parse_args()
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -39,7 +40,7 @@ def app(tmp_path):
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(body)
-        HTTPServer(('127.0.0.1', args.port), Handler).serve_forever()
+        HTTPServer((args.host, args.port), Handler).serve_forever()
     '''), encoding='utf-8')
     git(root, 'init')
     git(root, 'add', '.')
@@ -155,7 +156,8 @@ def test_deploy_recovers_stale_state_without_stopping_reused_pid(app, tmp_path, 
         unrelated.wait(timeout=15)
 
 
-def test_frontend_survives_launcher_and_repeated_deployment(app, tmp_path, monkeypatch):
+@pytest.mark.parametrize('host', ['127.0.0.1', '0.0.0.0'])
+def test_frontend_survives_launcher_and_repeated_deployment(app, tmp_path, monkeypatch, host):
     home = tmp_path / 'home'
     output = tmp_path / 'ops'
     output.mkdir()
@@ -164,6 +166,7 @@ def test_frontend_survives_launcher_and_repeated_deployment(app, tmp_path, monke
     (output / 'requirements.lock').write_text('')
     monkeypatch.setattr(frontend, 'ROOT', output)
     monkeypatch.setenv('MONGO_DB_NAME', 'nyc311_test_ops')
+    monkeypatch.setenv('NYC311_FRONT_HOST', host)
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         port = sock.getsockname()[1]
@@ -179,6 +182,11 @@ def test_frontend_survives_launcher_and_repeated_deployment(app, tmp_path, monke
         assert frontend.verify('test', port)['forecasts'] == 1
         report = frontend.deploy(app, home, 'config/production.json', 'test', port)
         assert report['already_running'] is True
+        assert report['host'] == host
+        assert state['host'] == host
+        listener = psutil.Process(state['listener']['pid'])
+        assert any(c.status == psutil.CONN_LISTEN and c.laddr.ip == host and c.laddr.port == port
+                   for c in listener.net_connections(kind='tcp'))
         assert report['listener_pid'] == state['listener']['pid']
         with pytest.raises(RuntimeError, match='Expected completed prediction'):
             frontend.verify('missing', port)

@@ -69,7 +69,7 @@ def owned_process(record):
 
 
 def has_listener(process, port=PORT):
-    return any(c.status == psutil.CONN_LISTEN and c.laddr.ip == '127.0.0.1' and c.laddr.port == port
+    return any(c.status == psutil.CONN_LISTEN and c.laddr.ip in ('127.0.0.1', '0.0.0.0') and c.laddr.port == port
                for c in process.net_connections(kind='tcp'))
 
 
@@ -115,11 +115,14 @@ def release_from_git(app, home):
     return commit, release
 
 
-def launch(python, script, config, release, front_home, port=PORT):
+def launch(python, script, config, release, front_home, port=PORT, host='127.0.0.1'):
     env = dict(os.environ, JENKINS_NODE_COOKIE='nyc311-frontend-service', BUILD_ID='nyc311-frontend-service')
     options = {'creationflags': subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == 'nt' else {'start_new_session': True}
+    command = [str(python), str(script), '--config', str(config), '--port', str(port)]
+    if host != '127.0.0.1':
+        command.extend(['--host', host])
     with (front_home / 'stdout.log').open('ab', buffering=0) as stdout, (front_home / 'stderr.log').open('ab', buffering=0) as stderr:
-        process = subprocess.Popen([str(python), str(script), '--config', str(config), '--port', str(port)],
+        process = subprocess.Popen(command,
             cwd=release, env=env, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, close_fds=True, **options)
     owner = psutil.Process(process.pid)
     launcher = process_record(owner, script)
@@ -165,6 +168,9 @@ def verify(expected_run, port=PORT):
 
 
 def deploy(app, home, config, expected_run=None, port=PORT):
+    host = os.environ.get('NYC311_FRONT_HOST') or '127.0.0.1'
+    if host not in ('127.0.0.1', '0.0.0.0'):
+        raise ValueError('NYC311_FRONT_HOST must be 127.0.0.1 or 0.0.0.0')
     front_home = home / 'front'
     front_home.mkdir(parents=True, exist_ok=True)
     with exclusive_lock(front_home / 'deploy.lock'):
@@ -176,7 +182,7 @@ def deploy(app, home, config, expected_run=None, port=PORT):
         version = hashlib.sha256(Path(__file__).read_bytes() + (ROOT / 'scripts/runtime.py').read_bytes()
                                  + (ROOT / 'requirements.lock').read_bytes()).hexdigest()
         identity = {'commit': commit, 'database': os.environ['MONGO_DB_NAME'], 'deployment_version': version,
-                    'python': str(Path(sys.executable).resolve()), 'config': str(config)}
+                    'python': str(Path(sys.executable).resolve()), 'config': str(config), 'host': host, 'port': port}
         state_path = front_home / 'process.json'
         state = json.loads(state_path.read_text(encoding='utf-8-sig')) if state_path.exists() else None
         same = False
@@ -190,9 +196,9 @@ def deploy(app, home, config, expected_run=None, port=PORT):
                 stop_owned([state['listener'], state['launcher']])
             if listening(port):
                 raise RuntimeError('Frontend port is still occupied; no new process was started')
-            state = {**identity, **launch(sys.executable, script, config_path, release, front_home, port)}
+            state = {**identity, **launch(sys.executable, script, config_path, release, front_home, port, host)}
             write_json(state_path, state)
-        report = {**verify(expected_run, port), 'commit': commit, 'already_running': same, 'listener_pid': state['listener']['pid']}
+        report = {**verify(expected_run, port), 'commit': commit, 'host': host, 'already_running': same, 'listener_pid': state['listener']['pid']}
         write_json(ROOT / 'artifacts/frontend.json', report)
         return report
 

@@ -19,7 +19,10 @@ The node label is `nyc311`; it does not prescribe an operating system.
 See [SETUP.md](docs/SETUP.md). Install Python 3.12, Git, Jenkins and MongoDB.
 The jobs must use the same host and account because MongoDB and the artifacts are local.
 MongoDB remains `127.0.0.1:27017`, database `nyc311_forecasting`.
-The frontend binds only `127.0.0.1:30130`. Docker is not required for deployment.
+The frontend defaults to `127.0.0.1:30130`. For a public server, set the Jenkins node
+environment variable `NYC311_FRONT_HOST=0.0.0.0` and forward its public port to 30130.
+The bind address is part of deployment identity; health checks still use loopback.
+Docker is not required for deployment.
 
 SCM uses public HTTPS. Credentials and local configuration do not belong in Git.
 Pipeline files and deployment scripts live only in this repository.
