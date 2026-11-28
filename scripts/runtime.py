@@ -116,18 +116,31 @@ def main():
                         '--home', str(home), '--config', str(config.relative_to(app))],
                        cwd=ROOT, env=env, check=True)
     else:
+        mode = env.get('FETCH_MODE') or 'ingest'
+        if args.action == 'fetch' and mode not in ('ingest', 'verify'):
+            raise ValueError('FETCH_MODE must be ingest or verify')
+        if args.action == 'fetch' and mode == 'verify' and not (env.get('SNAPSHOT_ID') and env.get('EXPECTED_RUN_ID')):
+            raise ValueError('Verification requires SNAPSHOT_ID and EXPECTED_RUN_ID')
         output = app / 'artifacts' / f'refresh-{args.action}.json'
         command = [str(python), 'main_refresh.py', args.action, '--config', str(config), '--output', str(output)]
         if args.action == 'model':
-            for key, option in [('TRAINING_POLICY', '--training-policy'), ('RUN_ID', '--run-id')]:
+            for key, option in [('TRAINING_POLICY', '--training-policy'), ('RUN_ID', '--run-id'), ('SNAPSHOT_ID', '--snapshot-id')]:
                 if env.get(key):
                     command.extend([option, env[key]])
         subprocess.run(command, cwd=app, env=env, check=True)
+        result = json.loads(output.read_text(encoding='utf-8'))
+        if args.action == 'fetch' and mode == 'verify':
+            subprocess.run([str(python), 'main_refresh.py', 'verify', '--config', str(config),
+                            '--snapshot-id', env['SNAPSHOT_ID'], '--forecast-run-id', env['EXPECTED_RUN_ID'],
+                            '--output', str(output.parent / 'verification.json')], cwd=app, env=env, check=True)
         if args.action == 'model':
-            result = json.loads(output.read_text(encoding='utf-8'))
             (output.parent / 'run-id.txt').write_text(result['prediction']['run_id'], encoding='utf-8')
-            commit = subprocess.check_output(['git', '-C', str(app), 'rev-parse', 'HEAD'], text=True).strip()
-            (output.parent / 'app-commit.txt').write_text(commit, encoding='utf-8')
+            snapshot_id = result['prediction']['snapshot_id']
+        else:
+            snapshot_id = result.get('snapshot_id') or result['ingestion']['snapshot_id']
+        (output.parent / 'snapshot-id.txt').write_text(snapshot_id, encoding='utf-8')
+        commit = subprocess.check_output(['git', '-C', str(app), 'rev-parse', 'HEAD'], text=True).strip()
+        (output.parent / 'app-commit.txt').write_text(commit, encoding='utf-8')
 
 
 if __name__ == '__main__':

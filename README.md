@@ -6,12 +6,17 @@ The operations scripts use Python 3.12 on Linux, macOS and Windows. PowerShell i
 
 | Pipeline | Trigger | Result |
 |---|---|---|
-| `nyc311-fetch` | Daily 10:00 America/New_York; also requested by model | Complete current snapshot or certified no-op with zero API requests |
-| `nyc311-model` | Daily 10:30 America/New_York or manual | Fetch check, forecasts, mature-label evaluation and diagnostics in Mongo; triggers frontend |
-| `nyc311-front` | Successful model job or manual | Deploys the exact application commit and verifies the requested result |
+| `nyc311-fetch` (`ingest`) | Daily 10:00 America/New_York or manual | Complete source snapshot; triggers model on success |
+| `nyc311-model` | Successful ingest fetch | Forecast and diagnostics using that exact snapshot; triggers verification fetch on success |
+| `nyc311-fetch` (`verify`) | Successful model | Checks source freshness, snapshot lineage, forecast publication and diagnostics; triggers frontend on success |
+| `nyc311-front` | Successful verification fetch | Deploys the exact application commit and verifies the requested result |
 
 The root `Jenkinsfile` generates these three jobs. It runs no application workload.
-Schedules use New York time. The model job holds no executor while waiting for dependent jobs.
+Only the initial fetch has a schedule, in New York time. Every transition runs in
+`post { success { ... } }` and queues the next job without waiting for it. Each job
+reports its own result; a failed or aborted job cannot start the following step.
+The verification fetch terminates at frontend and never triggers another model.
+This forward chain works with one executor and `disableConcurrentBuilds()` on fetch.
 The node label is `nyc311`; it does not prescribe an operating system.
 
 ## Setup
@@ -58,8 +63,17 @@ must be running and the model/front job must be triggered to start the frontend.
 
 Common: `APP_REPO_URL`, `APP_BRANCH`, `CONFIG_PATH`, `MONGO_DB_NAME`, `NYC311_HOME`, `PYTHON_BIN`.
 `PYTHON_BIN` is an executable path; empty selects `python3.12` on POSIX or `py -3.12` on Windows.
-Model: `TRAINING_POLICY` (`auto`, `reuse`, `train`) and optional `RUN_ID`.
-Front: optional `EXPECTED_RUN_ID`, supplied automatically by the model job.
+Start the complete chain with `nyc311-fetch`, `FETCH_MODE=ingest`. It accepts
+`TRAINING_POLICY` (`auto`, `reuse`, `train`) and optional model `RUN_ID`.
+The successful fetch passes `SNAPSHOT_ID` and the exact application commit to model.
+Model passes these identifiers plus `EXPECTED_RUN_ID` to fetch in `verify` mode.
+The second fetch uses the ordinary freshness check: a current source is a no-op;
+outdated data is fetched. A changed snapshot or incomplete publication blocks frontend
+and requires restarting the chain with a new model run ID. It never silently substitutes
+a newer dataset for the model's original source. Provisional labels retain the application's
+existing admission policy; verification does not declare future actuals available.
+Starting the model Jenkins job without `SNAPSHOT_ID` fails with instructions to start fetch.
+Front receives `EXPECTED_RUN_ID` only after verification succeeds.
 New parameters for an already completed immutable run require a new run ID.
 
 ```sh
@@ -67,6 +81,11 @@ python3.12 -m scripts.runtime fetch --app-path ../nyc311-forecasting
 python3.12 -m scripts.runtime model --app-path ../nyc311-forecasting
 python3.12 -m scripts.runtime front --app-path ../nyc311-forecasting
 ```
+
+These local CLI commands run individual stages; Jenkins performs the trigger chain.
+After updating both application and ops revisions, rerun `nyc311-seed` so the old model
+cron is removed and new parameters are installed. Do not update only the pipeline files
+while leaving the former job configuration in place.
 
 Jenkins uses `scripts/steps.groovy` to choose `sh` or `bat`.
 Operations, locking and process management are implemented in Python.
