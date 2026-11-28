@@ -1,5 +1,45 @@
 # Jenkins and portability verification
 
+## Update — 28 November 2026: sequential trigger chain
+
+The independent model timer has been removed. Only fetch is scheduled at 10:00
+America/New_York. The successful initial fetch queues model; successful model queues
+fetch in verification mode; successful verification queues frontend.
+
+The actual Job DSL and all three Jenkinsfiles were executed on the remote Linux
+controller in an isolated test folder, with one executor. Applying the former DSL
+and then the new DSL removed the old model cron. The controller's Declarative
+validator accepted fetch, model and front.
+
+| Scenario | Observed phases | Result |
+|---|---|---|
+| Deliberately delayed fetch | ingest → model → verify → front | Model stayed unstarted until fetch was released and succeeded |
+| Initial fetch failure | ingest | No model, verification or frontend |
+| Model failure | ingest → model | No verification or frontend |
+| Verification failure | ingest → model → verify | No frontend |
+
+The Jenkins runs used `tests/jenkins_fixture.py` as their application process, a
+reserved test database name and separate artifact homes. They exercised real SCM
+checkouts, parameters, job queues and success/failure triggers without reimporting
+production data or restarting the public frontend. The fixture checked propagation
+of snapshot ID, forecast run ID and the exact application commit. This is orchestration
+evidence, not a production model benchmark.
+
+Separately, all **91 application tests** passed against native MongoDB on Windows,
+without skips, including the real CLI pipeline and forecast verification. All
+**15 operations tests** and Ruff passed locally and on Ubuntu and Windows in
+[GitHub Actions](https://github.com/PeterPorzuczek/nyc311-forecasting-ops/actions/runs/46133165325).
+Verification checks source freshness/completeness, snapshot and dataset lineage,
+completed publication, forecast/diagnostic group coverage and integer forecast totals.
+
+Incident review: on 27 November the initial remote fetch #4 ran from 15:00:00 to
+15:50:55 UTC. Model job #3 was scheduled at 15:30 but its calculation waited for
+its dependency fetch #5 and began after 15:51. The old schedule therefore started
+the job too early, while the existing dependency prevented modeling before fetch
+completed in that observed run. The new explicit chain removes the independent timer.
+
+Earlier sections below record the former configuration and are historical evidence.
+
 ## Update — 23 November 2026, Europe/Warsaw
 
 The active operations code uses Python, with `sh`/`bat` dispatch in Jenkins.

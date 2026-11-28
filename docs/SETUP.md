@@ -17,7 +17,9 @@ python3.12 scripts/configure_jenkins.py --url http://127.0.0.1:8080 --build
 6. Run the seed and approve exactly the reviewed `jobs/nyc311.groovy` source in Jenkins Script Approval.
    Rerun the seed after approval. A changed DSL source requires its own approval.
    Pipeline sandboxing, CSRF protection and unrelated jobs remain unchanged.
-7. Run `nyc311-model`. It invokes fetch, publishes predictions and diagnostics, and deploys the frontend.
+7. Run `nyc311-fetch` with `FETCH_MODE=ingest`. On success it triggers model, then a
+   verification fetch, then frontend. Only the first fetch has a 10:00 New York cron.
+   Rerun the seed when upgrading to remove the former 10:30 model cron.
    Inspect archived JSON and open [local results](http://127.0.0.1:30130/).
 
 An API token is preferred for the setup helper. Password authentication uses a session crumb.
